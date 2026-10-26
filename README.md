@@ -4,6 +4,22 @@
 
 에이전트별 역할과 작업 프롬프트를 입력하고 실행 버튼을 누릅니다. A → B → A처럼 실행 순서는 자유롭고, 자동 실행·자동 대기열·에이전트 간 자동 공유는 없습니다. 첫 대상의 기본 주소는 [모여](https://moyeo-web.vercel.app/login)이며 다른 웹 서비스 URL도 설정할 수 있습니다.
 
+## 다른 컨텍스트에서 이어가기
+
+기준일: **2026-10-26**. 먼저 [인계 요약](docs/HANDOFF.md)을 읽고, 새 대화에는 [복사용 프롬프트](docs/NEXT_CONTEXT_PROMPT.md)를 사용하세요.
+
+| 문서 | 내용 |
+| --- | --- |
+| [배경과 합의](docs/PROJECT_CONTEXT.md) | 초기 기획, 직렬 MVP로 바뀐 이유, 확정 요구와 제외 범위 |
+| [구성과 코드](docs/ARCHITECTURE.md) | 구성도, 디렉터리, API, 실행 제어, 데이터 저장과 제한 |
+| [프롬프트](docs/PROMPTS.md) | 실제 SDK 입력 구조, 도구 계약, 공통 지침과 A→B→A 예시 |
+| [키와 데이터 관리](docs/SECURITY.md) | 현재 키 전달 방식, 초기 설정, Public 저장소 제외, 보안 개선안 |
+| [인계 요약](docs/HANDOFF.md) | 현재 상태, 다음 작업, 환경 이동, 미완료 사항 |
+| [오늘 작업 기록](docs/WORKLOG.md) | 구현·검증 결과, 수정한 문제, 실패 이력과 검증 한계 |
+| [새 컨텍스트 프롬프트](docs/NEXT_CONTEXT_PROMPT.md) | 새 대화에 붙여넣을 요청문 |
+
+**원격 반영 주의:** 구현 커밋은 로컬에 생성했지만 GitHub push는 인증 환경 오류로 완료하지 못했습니다. GitHub의 clone만으로 최신 소스를 얻는다고 가정하지 말고, 제공된 최신 소스 ZIP 또는 기존 로컬 작업 사본을 사용하세요. 실제 API와 모여 로그인/업무 흐름은 아직 미검증입니다.
+
 ## 시작하기 · Windows PowerShell
 
 Node.js **22.16 이상**이 필요합니다. SQLite는 Node 내장 모듈을 사용하므로 Node 22에서 experimental 경고가 나올 수 있습니다.
@@ -13,7 +29,9 @@ git clone https://github.com/ohujj/multi-agent-qa.git
 cd multi-agent-qa
 npm.cmd ci
 npm.cmd run browser:install
-Copy-Item .env.example .env
+if (-not (Test-Path -LiteralPath '.env')) {
+    Copy-Item -LiteralPath '.env.example' -Destination '.env'
+}
 notepad .env
 ```
 
@@ -24,7 +42,7 @@ OPENAI_API_KEY=사용자의_OpenAI_API_키
 OPENAI_MODEL=계정에서_사용할_수_있는_모델_ID
 ```
 
-도구 호출을 지원하는 OpenAI API 모델을 사용하세요. API 호출은 별도 사용 비용이 발생할 수 있습니다. API 키는 서버에서만 읽으며 대시보드에 입력하지 않습니다. 키·모델이 없으면 브라우저 준비와 대시보드는 이용할 수 있지만 AI 실행 버튼은 비활성화됩니다.
+도구 호출을 지원하는 OpenAI API 모델을 사용하세요. API 호출은 별도 사용 비용이 발생할 수 있습니다. API 키는 서버와 에이전트 worker의 환경변수로 사용하며 대시보드에 입력하지 않습니다. 현재 worker는 전체 환경변수를 상속합니다. 키 관리의 제한과 후속 개선안은 [SECURITY.md](docs/SECURITY.md)를 참고하세요. 키·모델이 없으면 브라우저 준비와 대시보드는 이용할 수 있지만 AI 실행 버튼은 비활성화됩니다.
 
 ```powershell
 npm.cmd run build
