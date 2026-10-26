@@ -151,3 +151,16 @@ PASS: development proxy, SSE UI connection, unconfigured API state, settings pag
 ## 근거와 검증 한계
 
 사용자 대화, 실제 소스 파일, package.json, .gitignore, Git 명령 결과, 로컬 smoke 결과 JSON 및 빌드/브라우저 출력에 근거한다. 외부 서비스 운영 데이터와 실제 API 비용을 검증한 기록은 없다.
+
+
+## 후속 원격 확인과 텍스트 보고 고도화
+
+초기 push 실패 뒤 사용자 작업 후 원격 main과 로컬 28979ad 일치를 확인했다. 위 실패 기록은 과거 상태이며 현재 원격에 초기 코드·인계 문서가 존재한다.
+
+사용자는 화면 대신 AI의 관찰·판단 요약·의심·검증을 실시간 텍스트로 받고 종료 시 피드백을 원한다고 명확히 했다. DOM을 유지하고 기본 캡처를 끄며, 잔존 결함을 먼저 수정하라는 지시를 받았다.
+
+R1~R8의 ref·위험 form Enter·입력 type·최초 탐색 복구·DB 동률·키 상속·입력 오류·문서 상태를 수정했다. DB 스키마·실제 .env·의존성 버전은 변경하지 않았다.
+
+report_progress, browser_action의 intent, 이벤트 출처, waiting/summarizing 상태, finish API, 도구 없는 피드백 요청과 기록 기반 대체를 추가했다. 캡처는 off/findings/actions로 선택한다. 현재 동작과 검증 결과는 TEXT_REPORTING.md가 기준이다.
+
+실제 API·모여 데이터는 사용하지 않았고 별도 로컬 fixture와 모의 API로 검증했다. 자세한 회귀 증거는 출력물의 고도화 검증 기록을 참고한다.

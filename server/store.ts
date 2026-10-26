@@ -11,7 +11,7 @@ export class Store {
     this.db.exec('PRAGMA journal_mode=WAL; CREATE TABLE IF NOT EXISTS tests (id TEXT PRIMARY KEY, state TEXT NOT NULL, updated_at TEXT NOT NULL)');
   }
   latest(): Dashboard | null {
-    const row = this.db.prepare('SELECT state FROM tests ORDER BY updated_at DESC LIMIT 1').get() as {state: string} | undefined;
+    const row = this.db.prepare('SELECT state FROM tests ORDER BY updated_at DESC, rowid DESC LIMIT 1').get() as {state: string} | undefined;
     return row ? JSON.parse(row.state) : null;
   }
   save(state: Dashboard) {

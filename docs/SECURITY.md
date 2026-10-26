@@ -18,12 +18,12 @@
 
 | 항목 | 현재 상태 |
 | --- | --- |
-| 키 읽기 | config.ts에서 dotenv/config를 로드하고 process.env.OPENAI_API_KEY 사용 |
+| 키 읽기 | 메인 config.ts에서 dotenv를 로드하고 process.env.OPENAI_API_KEY 사용. worker는 .env 재로딩 금지 |
 | UI 입력 | API 키 입력 UI 없음. 역할·작업 프롬프트에 키를 넣는 구조 아님 |
 | 실행 조건 | API 키와 모델 ID가 모두 있어야 실행 가능 |
 | Git 제외 | .env, .env.* 제외. 비밀 값 없는 .env.example만 예외 |
-| 작업 프로세스 | Manager가 현재 process.env 전체를 worker에 상속 |
-| SDK | worker에서 API 사용. tracingDisabled=true, traceIncludeSensitiveData=false |
+| 작업 프로세스 | OS 필수 변수와 필요한 앱 변수만 worker에 전달 |
+| SDK | worker에서 API 사용. store=false, tracingDisabled=true, traceIncludeSensitiveData=false |
 | 텍스트 기록 | 알려진 API 키 문자열·일부 토큰 패턴 마스킹 |
 | 브라우저 증거 | PNG에서 input/textarea/contenteditable 영역 마스킹 |
 | 데이터 | DB·브라우저 프로필·증거·바이너리를 .local 아래 저장, Git 제외 |
@@ -31,7 +31,7 @@
 
 **“서버에서만 사용”은 프런트엔드에 키를 제공하지 않는다는 뜻이다. 메인 서버 한 프로세스만 키를 보유한다는 뜻은 아니다.** 현재 worker들도 환경변수로 같은 키를 받는다.
 
-Playwright 브라우저 실행 옵션에는 명시적인 환경변수 허용 목록이 없다. 브라우저 하위 프로세스까지 키가 상속되는지 보안 개선 시 확인하고, 필요 없는 환경변수는 전달하지 않는 방향을 검토해야 한다. 이번 작업에서 브라우저 프로세스의 실제 환경을 검사한 것은 아니다.
+초기 점검에서는 Chromium에도 API 키가 상속되는 문제를 가짜 키로 확인했다. 현재는 environment.ts의 허용 목록으로 Chromium에서 모델 키와 관련 없는 비밀을 제외한다. worker에는 API 호출에 필요한 앱 변수만 전달하며, worker의 .env 자동 재로딩도 막았다. 실제 키가 아닌 가짜 표시 값으로 이 경계를 회귀 검증했다.
 
 Git 제외와 마스킹은 암호화가 아니다. .env와 .local을 읽을 수 있는 다른 프로세스나 사용자를 막는 보안 경계가 아니다.
 
@@ -88,10 +88,12 @@ Windows 사용자/시스템 전체에 영구 환경변수를 등록하는 것이
 
 아래는 제안이며 현재 구현됐거나 사용자가 우선순위를 확정한 것으로 취급하지 않는다.
 
+이미 환경변수 최소 전달·Chromium의 키 제외를 적용했다. 아래에서 아직 필요한 작업은 키 공급자 추상화와 OS 저장소 연동이며, 현재 구현을 다시 미구현으로 해석하지 않는다.
+
 1. 키 공급자 인터페이스를 만들어 환경변수와 OS 저장소를 교체 가능하게 한다.
 2. 키는 로컬 서버/필요한 worker에만 전달하고 UI·SSE·SQLite·보고서에는 넣지 않는다.
-3. worker 환경변수를 허용 목록으로 좁힌다. .env의 다른 비밀까지 전부 상속하지 않는다.
-4. Chromium 실행 환경에서는 API 키 및 불필요한 비밀 변수를 제거한다.
+3. [적용됨] worker 환경변수를 허용 목록으로 좁힌다. .env의 다른 비밀까지 전부 상속하지 않는다.
+4. [적용됨] Chromium 실행 환경에서는 API 키 및 불필요한 비밀 변수를 제거한다.
 5. 자격 증명 저장소 등록·교체·삭제는 사용자가 명시적으로 수행하는 로컬 흐름으로 설계한다.
 6. UI에는 ‘설정됨/미설정’과 연결 오류만 보여 준다. 키 원문을 반환하지 않는다.
 7. 새 키로 최소한의 API 연결 검증 후 이전 키를 폐기한다.
@@ -127,7 +129,7 @@ git diff --cached --check
 - 모델에는 프롬프트와 DOM 텍스트·도구 결과를 보낸다. 로컬 전용 추론이 아니다.
 - 화면 본문의 개인 정보는 입력 필드 마스킹으로 모두 가려지지 않는다.
 - Playwright trace는 네트워크·DOM·화면 등 민감 정보를 담을 수 있다. PNG 마스킹과 별도로 취급한다.
-- API 모델의 서버 측 데이터 보존 설정을 이 프로젝트에서 별도로 검증·강제한 상태는 아니다. 민감한 테스트 전에 실제 계정·API 정책을 확인한다.
+- 현재 요청에 store=false를 명시하지만 이것만으로 모든 서버 측 데이터 보존이 없어지는 것은 아니다. 계정별 전체 보존 정책을 검증한 상태는 아니다. 민감한 테스트 전에 실제 계정·API 정책을 확인한다.
 - 외부 페이지 지침은 신뢰하지 않는 데이터로 다룬다. 모델에게 제한된 도구만 제공하는 것도 함께 유지한다.
 - 삭제·결제 등의 라벨 차단은 보조 수단이다. 운영 서비스에 대한 전면 보안 테스트 승인으로 해석하지 않는다.
 
@@ -143,4 +145,4 @@ git diff --cached --check
 
 ## 확인 범위
 
-config.ts, manager.ts, worker.ts, browser.ts, index.ts와 .gitignore를 읽어 확인했다. 실제 키를 조회·출력·생성·등록하거나 Windows 파일 권한·자격 저장소를 변경하지 않았다.
+config.ts, environment.ts, manager.ts, worker.ts, browser.ts, index.ts와 .gitignore를 읽어 확인했다. 실제 키를 조회·출력·생성·등록하거나 Windows 파일 권한·자격 저장소를 변경하지 않았다.

@@ -8,6 +8,7 @@ import { dataDir, port, redact } from './config.js';
 import { Store } from './store.js';
 import { Conflict, Manager } from './manager.js';
 import { markdownReport } from './report.js';
+import { BadRequest } from './errors.js';
 
 const app = express();
 const manager = new Manager(new Store(dataDir));
@@ -41,7 +42,7 @@ app.get('/api/events', (req, res) => {
   const heartbeat = setInterval(() => res.write(': keepalive\n\n'), 15000);
   req.on('close', () => { clearInterval(heartbeat); manager.off('change', update); });
 });
-const settingsSchema = z.object({ targetUrl: z.string().url().max(2000), instructions: z.string().max(12000) });
+const settingsSchema = z.object({ targetUrl: z.string().url().max(2000), instructions: z.string().max(12000), captureMode: z.enum(['off', 'findings', 'actions']).default('off') });
 const agentSchema = z.object({ role: z.string().max(4000), prompt: z.string().max(16000), accountLabel: z.string().max(100) });
 const getId = (req: Request) => z.enum(AGENT_IDS).parse(req.params.id);
 app.patch('/api/settings', (req, res) => { manager.updateSettings(settingsSchema.parse(req.body)); res.json(manager.state); });
@@ -51,6 +52,7 @@ app.post('/api/agents/:id/run', (req, res) => { manager.run(getId(req)); res.sta
 app.post('/api/agents/:id/pause', (req, res) => { manager.pause(getId(req)); res.json(manager.state); });
 app.post('/api/agents/:id/resume', (req, res) => { manager.resume(getId(req)); res.json(manager.state); });
 app.post('/api/agents/:id/stop', (req, res) => { manager.stop(getId(req)); res.status(202).json(manager.state); });
+app.post('/api/agents/:id/finish', (req, res) => { manager.finish(getId(req)); res.status(202).json(manager.state); });
 app.post('/api/tests/new', async (_req, res) => { await manager.newTest(); res.json(manager.state); });
 app.patch('/api/findings/:id', (req, res) => {
   const finding = manager.state.findings.find(item => item.id === req.params.id);
@@ -80,8 +82,9 @@ if (existsSync(webDir)) {
   app.get('/{*path}', (_req, res) => res.sendFile(path.join(webDir, 'index.html')));
 }
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  const status = error instanceof Conflict ? 409 : error instanceof z.ZodError ? 400 : 500;
-  res.status(status).json({ error: redact(error instanceof z.ZodError ? error.issues.map(issue => issue.message).join(', ') : String(error instanceof Error ? error.message : error)) });
+  const parserType = (error as { type?: string })?.type;
+  const status = error instanceof Conflict ? 409 : error instanceof z.ZodError || error instanceof BadRequest || parserType === 'entity.parse.failed' ? 400 : parserType === 'entity.too.large' ? 413 : 500;
+  res.status(status).json({ error: parserType === 'entity.parse.failed' ? '올바른 JSON 본문을 보내세요.' : parserType === 'entity.too.large' ? '요청 본문이 너무 큽니다.' : redact(error instanceof z.ZodError ? error.issues.map(issue => issue.message).join(', ') : String(error instanceof Error ? error.message : error)) });
 });
 const server = app.listen(port, '127.0.0.1', () => console.log('Agent QA: http://127.0.0.1:' + port));
 let exiting = false;

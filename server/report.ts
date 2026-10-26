@@ -31,7 +31,7 @@ export function markdownReport(state: Dashboard) {
       ]),
     ]),
     '## 이벤트', '',
-    ...state.events.map(event => '- ' + event.createdAt + ' [' + (event.agentId || '전체') + '] ' + event.message),
+    ...state.events.map(event => '- ' + event.createdAt + ' [' + (event.agentId || '전체') + '] [' + event.kind + ' / ' + (event.source === 'agent' ? 'AI 요약' : '시스템') + '] ' + event.message),
     '',
   ].join('\n');
 }
